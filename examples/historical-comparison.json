@@ -1,0 +1,78 @@
+{
+  "configuration": {
+    "end": "2025-05-01T00:00:00Z",
+    "exclude": [],
+    "excludeKnownBots": false,
+    "identityExclusions": [],
+    "include": [
+      "**"
+    ],
+    "mainBranch": "main",
+    "repositories": {
+      "historical": {
+        "submitted": "14f24f4fc13902700c0cba6e427758909f45781c"
+      }
+    },
+    "start": "2024-10-01T00:00:00Z",
+    "thresholds": {
+      "authorCommitterSkewHours": 168,
+      "churnRatio": 5,
+      "largeChange": 5000,
+      "minAttributionCoverage": 0.8,
+      "timestampToleranceSeconds": 0
+    },
+    "timezone": "UTC",
+    "useDefaultExcludes": true,
+    "weights": {
+      "activity": 0.35,
+      "retained": 0.15,
+      "sustained": 0.5
+    }
+  },
+  "legacyOutput": "Author                        Email                                                                 Added     Removed   Net       Commits   Net Cont. (%)\n------------------------------------------------------------------------------------------------------------------------------------------------------\nRhys Tague                    54823859+drtaguewsu@users.noreply.github.com                          417       22        395       7         100.00%   \n------------------------------------------------------------------------------------------------------------------------------------------------------\nTOTAL                                                                                                                   395       7                   \n",
+  "repository": "rhystague/code-contribution-calculator",
+  "submitted": "14f24f4fc13902700c0cba6e427758909f45781c",
+  "v3Reasons": [
+    "No usable sustained evidence",
+    "No usable activity evidence",
+    "No usable retained evidence"
+  ],
+  "v3Status": "unscorable",
+  "workflowWarnings": [
+    {
+      "code": "NON_MERGE_MAIN_COMMIT",
+      "commit": "fa8f4fc753daecef83b5a4f607a8ee8d3d7a4041",
+      "message": "Direct, fast-forward, squash or rebase history cannot establish the required integration; excluded"
+    },
+    {
+      "code": "NON_MERGE_MAIN_COMMIT",
+      "commit": "bd8e6182b9af017ee9d3bf1f3eb1b9b6b2bc64b2",
+      "message": "Direct, fast-forward, squash or rebase history cannot establish the required integration; excluded"
+    },
+    {
+      "code": "NON_MERGE_MAIN_COMMIT",
+      "commit": "33846388d84cd2dd3c8adda24258cedf97604b96",
+      "message": "Direct, fast-forward, squash or rebase history cannot establish the required integration; excluded"
+    },
+    {
+      "code": "NON_MERGE_MAIN_COMMIT",
+      "commit": "ff2d38623c4c8bdb4bd94ece28d2d0257046b5bb",
+      "message": "Direct, fast-forward, squash or rebase history cannot establish the required integration; excluded"
+    },
+    {
+      "code": "NON_MERGE_MAIN_COMMIT",
+      "commit": "176ddca9dab1229c7cd537d7ad9e82de7c26a26e",
+      "message": "Direct, fast-forward, squash or rebase history cannot establish the required integration; excluded"
+    },
+    {
+      "code": "NON_MERGE_MAIN_COMMIT",
+      "commit": "b36c792794e6771ea232db6bb92667f667b3cd94",
+      "message": "Direct, fast-forward, squash or rebase history cannot establish the required integration; excluded"
+    },
+    {
+      "code": "NON_MERGE_MAIN_COMMIT",
+      "commit": "14f24f4fc13902700c0cba6e427758909f45781c",
+      "message": "Direct, fast-forward, squash or rebase history cannot establish the required integration; excluded"
+    }
+  ]
+}

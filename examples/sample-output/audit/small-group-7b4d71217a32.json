@@ -1,0 +1,431 @@
+{
+  "canonical": {
+    "attribution": "merge-delta-v1: blame additions; normalised file/line deletion matches; proportional ambiguous matches",
+    "baseline": "be6aaaf295a5e1fe6570541e503eb7528c932417",
+    "commits": [
+      {
+        "authorDate": "2026-01-09T00:00:00Z",
+        "authorTimestamp": 1767916800,
+        "committerDate": "2026-01-09T00:00:00Z",
+        "eligibility": null,
+        "email": "123+student-b@users.noreply.github.com",
+        "identity": "[\"Student B\",\"123+student-b@users.noreply.github.com\"]",
+        "integration": "cdfec9b367e5f7e726667755da85d11897ab117e",
+        "name": "Student B",
+        "parents": [
+          "e239d2db0a25a2d7d8fa965b4eb968d301152055"
+        ],
+        "sha": "6b3f7ae660edc1dedcc1e2b8e0397fd4d758859f",
+        "timestamp": 1767916800,
+        "week": 1
+      },
+      {
+        "authorDate": "2026-01-02T00:00:00Z",
+        "authorTimestamp": 1767312000,
+        "committerDate": "2026-01-02T00:00:00Z",
+        "eligibility": null,
+        "email": "a@example.test",
+        "identity": "[\"Student A\",\"a@example.test\"]",
+        "integration": "cdfec9b367e5f7e726667755da85d11897ab117e",
+        "name": "Student A",
+        "parents": [
+          "be6aaaf295a5e1fe6570541e503eb7528c932417"
+        ],
+        "sha": "e239d2db0a25a2d7d8fa965b4eb968d301152055",
+        "timestamp": 1767312000,
+        "week": 0
+      }
+    ],
+    "config": {
+      "end": "2026-03-12T00:00:00.000Z",
+      "exclude": [],
+      "excludeKnownBots": false,
+      "identityExclusions": [],
+      "include": [
+        "**"
+      ],
+      "mainBranch": "main",
+      "repositories": {},
+      "start": "2026-01-01T00:00:00.000Z",
+      "thresholds": {
+        "authorCommitterSkewHours": 168,
+        "churnRatio": 5,
+        "largeChange": 5000,
+        "minAttributionCoverage": 0.8,
+        "timestampToleranceSeconds": 0
+      },
+      "timezone": "UTC",
+      "useDefaultExcludes": true,
+      "weights": {
+        "activity": 0.35,
+        "retained": 0.15,
+        "sustained": 0.5
+      }
+    },
+    "configHash": "1ff63f2b83cc995d2e116552365edef735e9fa780ea95cd0756aa3e069684330",
+    "excludedFiles": [],
+    "fatal": [],
+    "identities": [
+      {
+        "email": "a@example.test",
+        "excluded": null,
+        "githubUsername": null,
+        "id": "[\"Student A\",\"a@example.test\"]",
+        "name": "Student A",
+        "reconciliation": "unreconciled",
+        "retained": 2,
+        "weekly": [
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "email": "123+student-b@users.noreply.github.com",
+        "excluded": null,
+        "githubUsername": "student-b",
+        "id": "[\"Student B\",\"123+student-b@users.noreply.github.com\"]",
+        "name": "Student B",
+        "reconciliation": "unreconciled",
+        "retained": 2,
+        "weekly": [
+          0,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "identityNotice": "All identity-level percentages are provisional until external reconciliation.",
+    "integrations": [
+      {
+        "accepted": 4,
+        "added": 4,
+        "coverage": 1,
+        "credited": 4,
+        "deleted": 0,
+        "disposition": "analysed",
+        "evidence": [
+          {
+            "allocations": [
+              {
+                "commit": "e239d2db0a25a2d7d8fa965b4eb968d301152055",
+                "disposition": "credited",
+                "identity": "[\"Student A\",\"a@example.test\"]",
+                "units": 1,
+                "week": 0
+              }
+            ],
+            "contentHash": "c84eab05b76a576eef6626d8ab831211455e3d9ad39a731db9a5cc5258502901",
+            "direction": "added",
+            "line": 1,
+            "method": "blame_origin",
+            "path": "a.txt"
+          },
+          {
+            "allocations": [
+              {
+                "commit": "e239d2db0a25a2d7d8fa965b4eb968d301152055",
+                "disposition": "credited",
+                "identity": "[\"Student A\",\"a@example.test\"]",
+                "units": 1,
+                "week": 0
+              }
+            ],
+            "contentHash": "fdc7c6921fde09dbffb8e9f7f3cad73b2d19343957052459fef83377ccfb8cff",
+            "direction": "added",
+            "line": 2,
+            "method": "blame_origin",
+            "path": "a.txt"
+          },
+          {
+            "allocations": [
+              {
+                "commit": "6b3f7ae660edc1dedcc1e2b8e0397fd4d758859f",
+                "disposition": "credited",
+                "identity": "[\"Student B\",\"123+student-b@users.noreply.github.com\"]",
+                "units": 1,
+                "week": 1
+              }
+            ],
+            "contentHash": "7aaa9f3e442303402e6fb5988502a3e120926831f0815ae7a74d9c745f127f42",
+            "direction": "added",
+            "line": 1,
+            "method": "blame_origin",
+            "path": "b.txt"
+          },
+          {
+            "allocations": [
+              {
+                "commit": "6b3f7ae660edc1dedcc1e2b8e0397fd4d758859f",
+                "disposition": "credited",
+                "identity": "[\"Student B\",\"123+student-b@users.noreply.github.com\"]",
+                "units": 1,
+                "week": 1
+              }
+            ],
+            "contentHash": "8bd643cbc29543879a5d91a72a21c52469e698e06993185dfaba9aa447e1ae24",
+            "direction": "added",
+            "line": 2,
+            "method": "blame_origin",
+            "path": "b.txt"
+          }
+        ],
+        "fallback": 0,
+        "files": [
+          {
+            "added": 2,
+            "deleted": 0,
+            "newMode": "100644",
+            "newOid": "c9428c77a3460193cf3237ca3e348495df7df5fc",
+            "newPath": "a.txt",
+            "oldMode": "000000",
+            "oldOid": "0000000000000000000000000000000000000000",
+            "oldPath": "a.txt",
+            "reason": null,
+            "status": "A"
+          },
+          {
+            "added": 2,
+            "deleted": 0,
+            "newMode": "100644",
+            "newOid": "78de0c5bb494ee5669ea8ec46c16f9aeb144af4f",
+            "newPath": "b.txt",
+            "oldMode": "000000",
+            "oldOid": "0000000000000000000000000000000000000000",
+            "oldPath": "b.txt",
+            "reason": null,
+            "status": "A"
+          }
+        ],
+        "identityExcluded": 0,
+        "ineligible": 0,
+        "introduced": [
+          "e239d2db0a25a2d7d8fa965b4eb968d301152055",
+          "6b3f7ae660edc1dedcc1e2b8e0397fd4d758859f"
+        ],
+        "parents": [
+          "be6aaaf295a5e1fe6570541e503eb7528c932417",
+          "6b3f7ae660edc1dedcc1e2b8e0397fd4d758859f"
+        ],
+        "rawBranch": 4,
+        "sha": "cdfec9b367e5f7e726667755da85d11897ab117e",
+        "timestamp": 1768003200,
+        "unattributed": 0
+      }
+    ],
+    "periods": [
+      {
+        "end": "2026-01-08T00:00:00.000Z",
+        "index": 0,
+        "start": "2026-01-01T00:00:00.000Z"
+      },
+      {
+        "end": "2026-01-15T00:00:00.000Z",
+        "index": 1,
+        "start": "2026-01-08T00:00:00.000Z"
+      },
+      {
+        "end": "2026-01-22T00:00:00.000Z",
+        "index": 2,
+        "start": "2026-01-15T00:00:00.000Z"
+      },
+      {
+        "end": "2026-01-29T00:00:00.000Z",
+        "index": 3,
+        "start": "2026-01-22T00:00:00.000Z"
+      },
+      {
+        "end": "2026-02-05T00:00:00.000Z",
+        "index": 4,
+        "start": "2026-01-29T00:00:00.000Z"
+      },
+      {
+        "end": "2026-02-12T00:00:00.000Z",
+        "index": 5,
+        "start": "2026-02-05T00:00:00.000Z"
+      },
+      {
+        "end": "2026-02-19T00:00:00.000Z",
+        "index": 6,
+        "start": "2026-02-12T00:00:00.000Z"
+      },
+      {
+        "end": "2026-02-26T00:00:00.000Z",
+        "index": 7,
+        "start": "2026-02-19T00:00:00.000Z"
+      },
+      {
+        "end": "2026-03-05T00:00:00.000Z",
+        "index": 8,
+        "start": "2026-02-26T00:00:00.000Z"
+      },
+      {
+        "end": "2026-03-12T00:00:00.000Z",
+        "index": 9,
+        "start": "2026-03-05T00:00:00.000Z"
+      }
+    ],
+    "repository": "small-group",
+    "retained": [
+      {
+        "attribution": [
+          {
+            "commit": "e239d2db0a25a2d7d8fa965b4eb968d301152055",
+            "exclusion": null,
+            "identity": "[\"Student A\",\"a@example.test\"]",
+            "lines": [
+              1,
+              2
+            ]
+          }
+        ],
+        "oid": "c9428c77a3460193cf3237ca3e348495df7df5fc",
+        "path": "a.txt"
+      },
+      {
+        "attribution": [
+          {
+            "commit": "6b3f7ae660edc1dedcc1e2b8e0397fd4d758859f",
+            "exclusion": null,
+            "identity": "[\"Student B\",\"123+student-b@users.noreply.github.com\"]",
+            "lines": [
+              1,
+              2
+            ]
+          }
+        ],
+        "oid": "78de0c5bb494ee5669ea8ec46c16f9aeb144af4f",
+        "path": "b.txt"
+      },
+      {
+        "attribution": [
+          {
+            "commit": "be6aaaf295a5e1fe6570541e503eb7528c932417",
+            "exclusion": "not_eligible_accepted_development",
+            "identity": null,
+            "lines": [
+              1
+            ]
+          }
+        ],
+        "oid": "52d5c94a6e61cba2a5878d202e02aa303c7f6a66",
+        "path": "starter.txt"
+      }
+    ],
+    "scores": {
+      "lambda": 0.8,
+      "reasons": [],
+      "rows": [
+        {
+          "activity": 2,
+          "components": {
+            "activity": 50,
+            "retained": 50,
+            "sustained": 50
+          },
+          "displayedPercentage": 50,
+          "email": "a@example.test",
+          "excluded": null,
+          "githubUsername": null,
+          "id": "[\"Student A\",\"a@example.test\"]",
+          "name": "Student A",
+          "percentage": 50,
+          "reconciliation": "unreconciled",
+          "retained": 2,
+          "sustained": 0.7142857142857143,
+          "weekly": [
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "activity": 2,
+          "components": {
+            "activity": 50,
+            "retained": 50,
+            "sustained": 50
+          },
+          "displayedPercentage": 50,
+          "email": "123+student-b@users.noreply.github.com",
+          "excluded": null,
+          "githubUsername": "student-b",
+          "id": "[\"Student B\",\"123+student-b@users.noreply.github.com\"]",
+          "name": "Student B",
+          "percentage": 50,
+          "reconciliation": "unreconciled",
+          "retained": 2,
+          "sustained": 0.7142857142857143,
+          "weekly": [
+            0,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "totals": {
+        "activity": 4,
+        "retained": 4,
+        "sustained": 1.4285714285714286
+      },
+      "totalsByWeek": [
+        2,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "selection": {
+      "baseline": "inferred_pre_assessment_prefix",
+      "submitted": "main_branch"
+    },
+    "status": "scored",
+    "submitted": "cdfec9b367e5f7e726667755da85d11897ab117e",
+    "timelineBasis": "recorded_committer_timestamps",
+    "version": "3.0.0",
+    "warnings": []
+  },
+  "evidenceHash": "d481f161caf15c5273695ba87d6d52a172f7d837ba7383c179a9efa1cfed6334",
+  "observations": {
+    "outsideSnapshot": []
+  },
+  "runtime": {
+    "git": "git version 2.50.1 (Apple Git-155)",
+    "gitCalls": 25,
+    "node": "v22.7.0"
+  }
+}

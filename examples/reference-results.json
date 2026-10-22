@@ -1,0 +1,86 @@
+{
+  "legacyOutput": "Author                        Email                                                                 Added     Removed   Net       Commits   Net Cont. (%)\n------------------------------------------------------------------------------------------------------------------------------------------------------\nMerger                        merger@example.test                                                   1         0         1         3         5.40%     \nStudent A                     a@example.test                                                        1000      0         1000      1         39.27%    \nStudent B                     123+student-b@users.noreply.github.com                                1000      0         1000      10        55.34%    \n------------------------------------------------------------------------------------------------------------------------------------------------------\nTOTAL                                                                                                                   2001      14                  \n",
+  "scores": {
+    "lambda": 400,
+    "reasons": [],
+    "rows": [
+      {
+        "activity": 1000,
+        "components": {
+          "activity": 50,
+          "retained": 50,
+          "sustained": 26.31578947368421
+        },
+        "displayedPercentage": 38.16,
+        "email": "a@example.test",
+        "excluded": null,
+        "githubUsername": null,
+        "id": "[\"Student A\",\"a@example.test\"]",
+        "name": "Student A",
+        "percentage": 38.1578947368421,
+        "reconciliation": "unreconciled",
+        "retained": 1000,
+        "sustained": 0.6666666666666666,
+        "weekly": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1000
+        ]
+      },
+      {
+        "activity": 1000,
+        "components": {
+          "activity": 50,
+          "retained": 50,
+          "sustained": 73.6842105263158
+        },
+        "displayedPercentage": 61.84,
+        "email": "123+student-b@users.noreply.github.com",
+        "excluded": null,
+        "githubUsername": "student-b",
+        "id": "[\"Student B\",\"123+student-b@users.noreply.github.com\"]",
+        "name": "Student B",
+        "percentage": 61.8421052631579,
+        "reconciliation": "unreconciled",
+        "retained": 1000,
+        "sustained": 1.8666666666666665,
+        "weekly": [
+          100,
+          100,
+          100,
+          100,
+          100,
+          100,
+          100,
+          100,
+          100,
+          100
+        ]
+      }
+    ],
+    "totals": {
+      "activity": 2000,
+      "retained": 2000,
+      "sustained": 2.533333333333333
+    },
+    "totalsByWeek": [
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      1100
+    ]
+  }
+}

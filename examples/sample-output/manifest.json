@@ -1,0 +1,13 @@
+{
+  "repositories": [
+    {
+      "audit": "audit/small-group-7b4d71217a32.json",
+      "baseline": "be6aaaf295a5e1fe6570541e503eb7528c932417",
+      "evidenceHash": "d481f161caf15c5273695ba87d6d52a172f7d837ba7383c179a9efa1cfed6334",
+      "repository": "small-group",
+      "status": "scored",
+      "submitted": "cdfec9b367e5f7e726667755da85d11897ab117e"
+    }
+  ],
+  "sourceConfigHash": "1ff63f2b83cc995d2e116552365edef735e9fa780ea95cd0756aa3e069684330"
+}

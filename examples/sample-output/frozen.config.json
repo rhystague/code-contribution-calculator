@@ -1,0 +1,31 @@
+{
+  "end": "2026-03-12T00:00:00.000Z",
+  "exclude": [],
+  "excludeKnownBots": false,
+  "identityExclusions": [],
+  "include": [
+    "**"
+  ],
+  "mainBranch": "main",
+  "repositories": {
+    "small-group": {
+      "baseline": "be6aaaf295a5e1fe6570541e503eb7528c932417",
+      "submitted": "cdfec9b367e5f7e726667755da85d11897ab117e"
+    }
+  },
+  "start": "2026-01-01T00:00:00.000Z",
+  "thresholds": {
+    "authorCommitterSkewHours": 168,
+    "churnRatio": 5,
+    "largeChange": 5000,
+    "minAttributionCoverage": 0.8,
+    "timestampToleranceSeconds": 0
+  },
+  "timezone": "UTC",
+  "useDefaultExcludes": true,
+  "weights": {
+    "activity": 0.35,
+    "retained": 0.15,
+    "sustained": 0.5
+  }
+}

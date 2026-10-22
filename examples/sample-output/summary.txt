@@ -1,0 +1,6 @@
+Repository | Contributor | Sustained % | Activity % | Retained % | Provisional % | Status
+small-group | Student A <a@example.test> | 50.00 | 50.00 | 50.00 | 50.00 | scored
+small-group | Student B <123+student-b@users.noreply.github.com> | 50.00 | 50.00 | 50.00 | 50.00 | scored
+
+1 repositories: 1 scored, 0 flagged, 0 unscorable.
+Percentages are provisional Git identities. Reconcile raw U/A/R before marking.
