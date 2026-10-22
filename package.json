@@ -1,0 +1,12 @@
+{
+  "name": "code-contribution-calculator",
+  "version": "3.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Offline, auditable assessment of accepted Git contributions",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "sample": "node scripts/sample.mjs"
+  }
+}

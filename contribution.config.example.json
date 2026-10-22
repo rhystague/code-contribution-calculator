@@ -1,0 +1,20 @@
+{
+  "start": "2026-03-02T00:00:00+11:00",
+  "end": "2026-05-11T00:00:00+10:00",
+  "timezone": "Australia/Sydney",
+  "mainBranch": "main",
+  "weights": { "sustained": 0.50, "activity": 0.35, "retained": 0.15 },
+  "useDefaultExcludes": true,
+  "include": ["**"],
+  "exclude": [],
+  "excludeKnownBots": false,
+  "identityExclusions": [],
+  "repositories": {},
+  "thresholds": {
+    "largeChange": 5000,
+    "churnRatio": 5,
+    "minAttributionCoverage": 0.8,
+    "authorCommitterSkewHours": 168,
+    "timestampToleranceSeconds": 0
+  }
+}
