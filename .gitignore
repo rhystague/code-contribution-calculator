@@ -1,3 +1,7 @@
 # Remove the Agent Docs
 AGENTS.md
 docs/*
+
+# Calculator output
+contribution-summary.csv
+contribution-evidence.json
