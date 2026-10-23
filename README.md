@@ -134,38 +134,7 @@ this rule. Traceable restorations keep the original author's retained credit.
 Large handwritten files remain eligible. Detection is not exhaustive; uncertain
 cases are flagged for review.
 
-<details>
-<summary>File exclusions and repeat detection: technical details</summary>
-
-Default file exclusions include:
-
-- Dependencies and environments: `node_modules`, `vendor`, `.venv`, `venv`.
-- Build output and caches: `dist`, `build`, `coverage`, `__pycache__`, `.next`,
-  `.nuxt`, `.cache`, `.pytest_cache`, `.mypy_cache`.
-- Recognised lockfiles, minified JS/CSS, source maps and generated filenames;
-  recognised generation markers in the first eight lines of a file.
-- Git history exports: `commit-history.txt`, `git-log.txt`, `git-history.txt`.
-- Binary files, invalid UTF-8, unsupported formats, symlinks and submodule entries.
-- Calculator files, contribution reports and byte-identical copies of the running
-  calculator, including copies committed to the repository.
-
-Exclusions apply to past activity and retained lines. JSON records the reasons.
-
-`--exclude` takes priority over `--include`, which restores eligible text caught by
-default exclusions. Inclusion cannot restore binary or calculator/report files,
-bypass scoring rules, or restrict the report to only those paths.
-
-Patterns match paths from the repository root: `*` stays within one folder level,
-`**` crosses folders, and `?` matches one character other than `/`. For example,
-`**/*.js` matches JavaScript at any depth; `*.js` matches only the root. Quote patterns
-to prevent shell expansion. Braces and character classes are literal.
-
-Repeat detection checks complete blocks, ignoring whitespace, plus their file history
-and surrounding non-blank lines. Identical text elsewhere is not automatically a
-repeat. Partial restorations and complex moves may remain uncertain; warnings do
-not establish misconduct.
-
-</details>
+See [file exclusions and matching rules](#file-exclusions-and-matching-rules) for the details.
 
 ## How your score is calculated
 
@@ -179,60 +148,23 @@ Your overall percentage combines **three shares of the team's contribution**:
 
 Here, **S, A and R are percentage shares**, each between 0 and 100:
 
-$$
-\text{Overall contribution (\%)} = 0.50S + 0.35A + 0.15R
-$$
+```text
+Overall contribution (%) = (0.50 × S) + (0.35 × A) + (0.15 × R)
+```
 
 For example, if your shares are **40% sustained**, **30% activity** and **20% retained**:
 
-$$
-0.50 \times 40 + 0.35 \times 30 + 0.15 \times 20 = \boxed{33.5\%}
-$$
+```text
+Overall = (0.50 × 40) + (0.35 × 30) + (0.15 × 20)
+        = 20 + 10.5 + 3
+        = 33.5%
+```
 
 Sustained development considers both consistency and the amount of work. It uses
 seven-day periods from the analysis start date, including inactive weeks and a
 final partial week.
 
-<details>
-<summary>How the sustained component is calculated</summary>
-
-For contributor $i$ in week $w$:
-
-| Symbol | Meaning |
-| --- | --- |
-| $L_{i,w}$ | Their credited additions and deletions that week |
-| $T_w$ | The team's total credited activity that week |
-| $W$ | Number of weeks, including inactive and partial weeks |
-| $\lambda$ | Twice the team's average weekly activity |
-
-$$
-\lambda = \frac{2 \times \text{total credited activity}}{W}
-\qquad
-U_i = \sum_{w=1}^{W} \frac{L_{i,w}}{T_w + \lambda}
-$$
-
-The extra term $\lambda$ reduces the influence of very small changes in quiet weeks.
-Convert $U_i$ into a percentage of the team total:
-
-$$
-S_i = 100 \times \frac{U_i}{\sum_j U_j}
-$$
-
-Activity and retained percentages use their respective team totals in the same way.
-All totals include Unattributed work.
-
-**Example:** over ten weeks, two contributors each record 1,000 activity units and
-have equal retained lines:
-
-| Contributor | When they contribute | Overall share |
-| --- | --- | ---: |
-| A | All 1,000 units in the final week | 38.16% |
-| B | 100 units in each of the ten weeks | 61.84% |
-
-Here $\lambda = 400$; only the sustained shares differ. Scores use unrounded values;
-displayed percentages use two decimal places and total 100%.
-
-</details>
+See the [weekly calculation and ten-week example](#weekly-calculation) for the details.
 
 ### Reading the results
 
@@ -311,6 +243,77 @@ For assessment, retain the report's snapshot hash, filters, calculator version a
 calculator SHA-256 alongside the result. Review limitations and identity evidence
 before using percentages in an assessment process.
 
+## Technical reference
+
+### File exclusions and matching rules
+
+Default file exclusions include:
+
+- Dependencies and environments: `node_modules`, `vendor`, `.venv`, `venv`.
+- Build output and caches: `dist`, `build`, `coverage`, `__pycache__`, `.next`,
+  `.nuxt`, `.cache`, `.pytest_cache`, `.mypy_cache`.
+- Recognised lockfiles, minified JS/CSS, source maps and generated filenames;
+  recognised generation markers in the first eight lines of a file.
+- Git history exports: `commit-history.txt`, `git-log.txt`, `git-history.txt`.
+- Binary files, invalid UTF-8, unsupported formats, symlinks and submodule entries.
+- Calculator files, contribution reports and byte-identical copies of the running
+  calculator, including copies committed to the repository.
+
+Exclusions apply to past activity and retained lines. JSON records the reasons.
+
+`--exclude` takes priority over `--include`, which restores eligible text caught by
+default exclusions. Inclusion cannot restore binary or calculator/report files,
+bypass scoring rules, or restrict the report to only those paths.
+
+Patterns match paths from the repository root: `*` stays within one folder level,
+`**` crosses folders, and `?` matches one character other than `/`. For example,
+`**/*.js` matches JavaScript at any depth; `*.js` matches only the root. Quote patterns
+to prevent shell expansion. Braces and character classes are literal.
+
+Repeat detection checks complete blocks, ignoring whitespace, plus their file history
+and surrounding non-blank lines. Identical text elsewhere is not automatically a
+repeat. Partial restorations and complex moves may remain uncertain; warnings do
+not establish misconduct.
+
+### Weekly calculation
+
+For contributor `i` in week `w`:
+
+| Symbol | Meaning |
+| --- | --- |
+| `L(i,w)` | Their credited additions and deletions that week |
+| `T(w)` | The team's total credited activity that week |
+| `W` | Number of weeks, including inactive and partial weeks |
+| `lambda` | Twice the team's average weekly activity |
+
+```text
+lambda = 2 × total credited activity / W
+
+Weekly credit = L(i,w) / (T(w) + lambda)
+U(i)          = sum of this contributor's weekly credits
+```
+
+The extra term `lambda` reduces the influence of very small changes in quiet weeks.
+Convert `U(i)` into a percentage of the team total:
+
+```text
+S(i) = 100 × U(i) / sum of all contributors' U scores
+```
+
+Activity and retained percentages use their respective team totals in the same way.
+All totals include Unattributed work.
+
+**Example:** over ten weeks, two contributors each record 1,000 activity units and
+have equal retained lines:
+
+| Contributor | When they contribute | Overall share |
+| --- | --- | ---: |
+| A | All 1,000 units in the final week | 38.16% |
+| B | 100 units in each of the ten weeks | 61.84% |
+
+Here `lambda = 400`; only the sustained shares differ. Scores use unrounded values;
+displayed percentages use two decimal places and total 100%.
+
 ## Development and previous versions
 
 ```sh
@@ -321,6 +324,3 @@ Tests use Node's built-in test runner and temporary Git repositories. No depende
 installation is needed. They cover scoring, scope, authorship, repetitions,
 exclusions, exports and standalone/npm execution.
 
-The original `contribution-scriptv2.2.mjs` and `py-contribution-scriptv2.2.py` remain
-available for reproducing legacy results. They retain their original 75% net-lines /
-25% commits model and interface; the new npm shortcut uses version 3.
