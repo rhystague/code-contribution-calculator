@@ -1,0 +1,11 @@
+{
+  "name": "code-contribution-calculator",
+  "version": "3.0.0",
+  "private": true,
+  "description": "A standalone, offline Git contribution calculator",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "contribution": "node contribution.mjs",
+    "test": "node --test test/*.test.mjs"
+  }
+}
