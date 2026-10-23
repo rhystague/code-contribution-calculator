@@ -70,14 +70,16 @@ feature commit is not itself a mainline snapshot. The excluded start must preced
 the inclusive end. Without limits, the initial commit is included.
 
 Date and commit limits intersect. Snapshot cutoffs use mainline **committer dates**;
-weekly activity uses original **author dates**, never a substituted merge date.
+weekly activity uses original **author dates** where known. If an original date is
+unknown, the first mainline integration's committer date is used as a visible fallback.
 Work must have been accepted within the selected mainline range and meet the date
 limits. Baseline/starter lines do not earn retained credit just because their author
 also works later. The period begins at the baseline's committer date, or the earliest
 recorded author/root date for full history, and ends at the selected snapshot's
-committer date. Date limits restrict this period. Original activity that cannot be
-placed within it makes the overall score unavailable rather than being shifted to
-another week. No calculation depends on today's date or the machine's timezone.
+committer date. Date limits restrict this period. Known original dates are never
+replaced to move work inside a selected range. An eligible change with a known date
+outside the effective reporting period, or without a usable fallback date, still
+prevents an overall score. No calculation depends on today's date or the machine's timezone.
 
 ## Which branch?
 
@@ -191,27 +193,68 @@ Git identities are grouped only by exact email (or exact name when email is abse
 All recorded names/emails remain in JSON. A Git identity is not a verified student.
 The calculator does not infer team size, reconcile students or calculate marks.
 
-When authorship is unresolved but timing is available, an **Unattributed** bucket
-stays in the team totals and percentages. Missing required timing, missing history,
-or a component with no evidence prevents an overall score. Weights are never
-redistributed. In an unscorable report, available component figures are partial
-evidence, and the overall is `N/A`/`null`, never an invented zero.
+An **Unattributed** bucket keeps work with unresolved authorship in team totals and
+percentages. Known authorship is preserved even if the original development date is
+unknown. Performing a merge does not transfer credit to the merger.
+
+### Missing development dates
+
+When an eligible change has no known original development date, use the committer
+date of the mainline commit that first accepted that change. This applies to both
+additions and deletions, including merge-only resolutions. The change enters that
+week's ledger under its known author or the Unattributed bucket. Original dates that
+are known continue to take precedence; later merges, restorations and repeated
+changes cannot move existing credit into another week.
+
+The **50% sustained / 35% activity / 15% retained** formula, smoothing and denominators
+stay unchanged. Fallback activity remains in all applicable totals. No weight or
+Unattributed share is redistributed to other contributors.
+
+Reports show the number and percentage of eligible activity units using fallback:
+
+```text
+Status:               scorable with warnings
+Timing fallback:      3 of 100 eligible activity units (3.00%)
+```
+
+The denominator is all eligible accepted additions plus deletions in the selected
+scope, after file and repetition exclusions. It is not commits or retained lines.
+With no eligible activity the percentage is `N/A`. There is no arbitrary coverage
+threshold: the amount is always visible. Integration may occur after development,
+so sustained scores using fallback are partly estimated. JSON preserves the unknown
+original date separately from the integration date used.
+
+An overall score remains unavailable when a required component has no eligible
+evidence, no usable reporting period exists, or eligible activity cannot be placed
+even with fallback. Missing required history stops analysis. In an unscorable report,
+available component figures are partial evidence and overall is `N/A`/`null`.
 
 ## Reports
 
-- The terminal shows scope, component shares, overall shares and warnings.
+- The terminal shows scope, component shares, overall shares, timing-fallback counts
+  and percentage, and warnings. A calculable report with warnings is labelled
+  **scorable with warnings**.
   `--code` expands this view without changing the calculation.
 - `contribution-summary.csv` is written by default, with identity/evidence columns,
-  component percentages, status, warnings, filters and resolved scope.
+  component percentages, status, warnings, filters and resolved scope. Appended
+  columns give team-wide total, original-timed, fallback and unplaced activity,
+  fallback percentage, and each identity's fallback activity count.
 - `--json` also writes `contribution-evidence.json`: full-precision values, raw
   identities, weekly activity, accepted line IDs and originating commits, retained
   attribution, exclusions, unresolved evidence and direct-commit IDs. It contains
-  enough data to recalculate the score or reconcile identities externally.
+  enough data to recalculate the score or reconcile identities externally. `timing`
+  contains `totalActivity`, `originalActivity`, `integrationFallbackActivity`,
+  `unplacedActivity` and `fallbackPercentage`. Each identity also has an
+  `integrationFallbackActivity` count. Accepted events retain `authorTime` (null when
+  unknown), `integrationTime`, the selected `activityTime`, `timingSource` (`author`
+  or `integration`) and `week`. Excluded repetitions have no selected timing or week.
 
 Reports are written in the current directory, replacing previous reports of the
 same name. Presentation flags do not change the evidence. CSV cells are quoted and
 formula-like identity fields escaped for spreadsheets; JSON preserves raw metadata.
-Exit codes: **0** = scorable report, **2** = report with unavailable overall score,
+CSV/JSON keep the machine status `scorable` or `unscorable`; warnings are separate.
+Exit codes: **0** = scorable report, including one with fallback warnings,
+**2** = report with unavailable overall score,
 **1** = invalid input, unavailable history or another failure. A failed run does
 not refresh older exports.
 
@@ -221,7 +264,8 @@ Use a complete local clone. Shallow histories and active ancestry grafts are rej
 required missing objects stop analysis. Replacement objects are ignored. Git dates
 can be edited; detectable anomalies are flagged, not treated as verified timestamps.
 Squashing or rewriting history can destroy attribution that this tool cannot recover
-or always detect. Complex merges may leave unresolved evidence and prevent scoring.
+or always detect. Complex merges may leave unresolved authorship and require the
+integration-date fallback. Fallback dates describe acceptance, not verified development time.
 Metadata and paths must be valid UTF-8; unsupported encodings stop analysis rather
 than silently combining identities or paths. Reports with a date cutoff are also
 unscorable if an ancestor within the chosen snapshot is dated after that cutoff.

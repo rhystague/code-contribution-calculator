@@ -1251,6 +1251,7 @@ function createIdentitySummary(identityId, weekCount) {
     deleted: 0,
     repeated: 0,
     activity: 0,
+    integrationFallbackActivity: 0,
     retained: 0,
     weekly: Array(weekCount).fill(0),
   };
@@ -1419,22 +1420,35 @@ function collectAcceptedEvidence(readGit, engine, history, period, warnings, pro
     }
   }
 
-  function assignActivityWeek(evidence, actor, summary) {
+  function assignActivityWeek(evidence, actor, summary, integrationCommit) {
     evidence.week = null;
+    evidence.activityTime = null;
+    evidence.timingSource = null;
     if (!evidence.eligible) {
       return;
     }
 
-    const hasUsableTime = actor.time !== null &&
-      actor.time >= period.periodStart && actor.time <= period.periodEnd;
+    // A missing development date uses first acceptance, without changing authorship.
+    // Known dates outside the period must not be moved to a more convenient week.
+    const usesIntegrationDate = actor.time === null;
+    const activityTime = usesIntegrationDate ? integrationCommit.committerTime : actor.time;
+    evidence.activityTime = activityTime === null ? null : formatTimestamp(activityTime);
+    evidence.timingSource = usesIntegrationDate ? 'integration' : 'author';
+
+    const hasUsableTime = activityTime !== null &&
+      activityTime >= period.periodStart && activityTime <= period.periodEnd;
     if (hasUsableTime && period.weekCount) {
-      const weekIndex = Math.floor((actor.time - period.periodStart) / SECONDS_PER_WEEK);
+      const weekIndex = Math.floor((activityTime - period.periodStart) / SECONDS_PER_WEEK);
       summary.weekly[weekIndex] += evidence.eligible;
+      if (usesIntegrationDate) {
+        summary.integrationFallbackActivity += evidence.eligible;
+      }
       evidence.week = weekIndex;
       return;
     }
 
-    problems.push('Eligible activity has missing timing or lies outside the effective history period.');
+    problems.push('Eligible activity has no usable timing, even with integration-date fallback, ' +
+      'or lies outside the effective history period.');
     warnings.add(
       `Cannot place ${evidence.eligible} ${evidence.kind} units into a week ` +
       `at ${evidence.integration}:${evidence.path}.`,
@@ -1473,6 +1487,9 @@ function collectAcceptedEvidence(readGit, engine, history, period, warnings, pro
       identity: summary.id,
       originCommit: actor.commit,
       authorTime: actor.time === null ? null : formatTimestamp(actor.time),
+      integrationTime: integrationCommit.committerTime === null
+        ? null
+        : formatTimestamp(integrationCommit.committerTime),
       raw: 1,
       eligible: eligibleUnits,
       repeated: repeatedUnits,
@@ -1484,7 +1501,7 @@ function collectAcceptedEvidence(readGit, engine, history, period, warnings, pro
       unresolvedChanges.push(evidence);
     }
     acceptedChanges.push(evidence);
-    assignActivityWeek(evidence, actor, summary);
+    assignActivityWeek(evidence, actor, summary, integrationCommit);
 
     if (isAddition && !alreadyCounted) {
       lineRecord.owner = summary.id;
@@ -1851,6 +1868,30 @@ export function calculate(identities, weekCount, problems = []) {
   };
 }
 
+function summariseActivityTiming(acceptedChanges) {
+  const timing = {
+    totalActivity: 0,
+    originalActivity: 0,
+    integrationFallbackActivity: 0,
+    unplacedActivity: 0,
+    fallbackPercentage: null,
+  };
+  for (const evidence of acceptedChanges) {
+    timing.totalActivity += evidence.eligible;
+    if (evidence.week === null) {
+      timing.unplacedActivity += evidence.eligible;
+    } else if (evidence.timingSource === 'integration') {
+      timing.integrationFallbackActivity += evidence.eligible;
+    } else {
+      timing.originalActivity += evidence.eligible;
+    }
+  }
+  if (timing.totalActivity) {
+    timing.fallbackPercentage = 100 * timing.integrationFallbackActivity / timing.totalActivity;
+  }
+  return timing;
+}
+
 // Public analysis entry point: scope, provenance, accepted evidence, then scoring.
 
 export function analyse(workingDirectory = process.cwd(), suppliedOptions = {}) {
@@ -1872,6 +1913,14 @@ export function analyse(workingDirectory = process.cwd(), suppliedOptions = {}) 
   const period = resolveReportingPeriod(engine, history, problems);
   const evidence = collectAcceptedEvidence(readGit, engine, history, period, warnings, problems);
   const score = calculate(evidence.identities, period.weekCount, problems);
+  const timing = summariseActivityTiming(evidence.acceptedChanges);
+  if (timing.integrationFallbackActivity) {
+    warnings.add(
+      `Integration-date fallback: ${formatActivityTiming(timing)}. ` +
+      'Original development dates are unknown for this activity; first integration dates ' +
+      'were used for weekly credit. Sustained scores are partly estimated.',
+    );
+  }
   const selectedCommitEvidence = history.selectedCommits.map(engine.readCommit);
 
   return {
@@ -1894,6 +1943,7 @@ export function analyse(workingDirectory = process.cwd(), suppliedOptions = {}) 
       },
     },
     ...score,
+    timing,
     warnings: [...warnings].sort(compareValues),
     identities: evidence.identities,
     evidence: {
@@ -1949,6 +1999,11 @@ function csvReportMetadata(report) {
     report.weekCount,
     report.lambda,
     report.scope.options,
+    report.timing.totalActivity,
+    report.timing.originalActivity,
+    report.timing.integrationFallbackActivity,
+    report.timing.unplacedActivity,
+    report.timing.fallbackPercentage,
   ];
 }
 
@@ -1984,16 +2039,18 @@ export function toCSV(report) {
     'Warnings', 'Version', 'Calculator SHA256', 'Branch', 'Reference', 'Selection',
     'Start baseline', 'End snapshot', 'Period start UTC', 'Period end UTC',
     'Weeks', 'Lambda', 'Filters',
+    'Eligible activity total', 'Original-timed activity', 'Integration-date fallback activity',
+    'Unplaced activity', 'Integration-date fallback %', 'Identity fallback activity',
   ];
   const metadata = csvReportMetadata(report);
   const rows = [columns];
   for (const summary of report.identities) {
-    rows.push([...csvIdentityValues(summary), ...metadata]);
+    rows.push([...csvIdentityValues(summary), ...metadata, summary.integrationFallbackActivity]);
   }
 
   // Empty reports still need their scope and status exported.
   if (!report.identities.length) {
-    rows.push([...Array(18).fill(null), ...metadata]);
+    rows.push([...Array(18).fill(null), ...metadata, null]);
   }
   return rows.map(formatCsvRow).join('\r\n') + '\r\n';
 }
@@ -2002,48 +2059,201 @@ function formatPercentage(percentage) {
   return percentage === null ? 'N/A' : `${percentage.toFixed(2)}%`;
 }
 
-function formatIdentityName(summary) {
-  if (summary.bucket) {
-    return 'Unattributed (reporting bucket)';
+function formatActivityTiming(timing) {
+  return `${timing.integrationFallbackActivity} of ${timing.totalActivity} eligible activity units ` +
+    `(${formatPercentage(timing.fallbackPercentage)})`;
+}
+
+function formatReportStatus(report) {
+  if (report.status === 'scorable' && report.warnings.length) {
+    return 'scorable with warnings';
   }
-  return `${summary.names.join(' / ')} <${summary.emails.join(' / ')}>`;
+  return report.status;
+}
+
+function formatIdentityLines(summary) {
+  if (summary.bucket) {
+    return ['Unattributed', '(reporting bucket)'];
+  }
+  return [summary.names.join(' / '), `<${summary.emails.join(' / ')}>`];
 }
 
 function formatIdentityPercentages(summary) {
   return [
-    formatIdentityName(summary),
+    formatIdentityLines(summary),
     formatPercentage(summary.display.sustained),
     formatPercentage(summary.display.activity),
     formatPercentage(summary.display.retained),
     formatPercentage(summary.display.overall),
-  ].join(' | ');
+  ];
 }
 
 function formatIdentityCodeEvidence(summary) {
-  return `  Added ${summary.added} / raw ${summary.rawAdded}; ` +
-    `deleted ${summary.deleted} / raw ${summary.rawDeleted}; retained ${summary.retained}; ` +
-    `commits ${summary.commits} (${summary.acceptedCommits.length} with accepted changes); ` +
-    `repeated units excluded ${summary.repeated}`;
+  return [
+    formatIdentityLines(summary),
+    `${summary.added} / ${summary.rawAdded}`,
+    `${summary.deleted} / ${summary.rawDeleted}`,
+    summary.retained,
+    `${summary.commits} / ${summary.acceptedCommits.length}`,
+    summary.repeated,
+  ];
+}
+
+function wrapTerminalText(value, width) {
+  // Escape repository-controlled text before measuring or padding it.
+  let remainingText = escapeTerminalText(value);
+  const lines = [];
+  while (remainingText.length > width) {
+    let breakPosition = remainingText.lastIndexOf(' ', width);
+    if (breakPosition <= 0) {
+      breakPosition = width;
+    }
+    lines.push(remainingText.slice(0, breakPosition));
+    remainingText = remainingText.slice(breakPosition).trimStart();
+  }
+  lines.push(remainingText);
+  return lines;
+}
+
+function formatTerminalRow(cells, widths) {
+  const paddedCells = [];
+  for (let columnIndex = 0; columnIndex < cells.length; columnIndex++) {
+    const cell = cells[columnIndex];
+    const width = widths[columnIndex];
+    paddedCells.push(columnIndex === 0 ? cell.padEnd(width) : cell.padStart(width));
+  }
+  return paddedCells.join(' | ');
+}
+
+function formatTerminalTable(headings, rows) {
+  const widths = [];
+  for (const heading of headings) {
+    widths.push(heading.length);
+  }
+
+  const preparedRows = [];
+  for (const row of rows) {
+    const preparedCells = [];
+    for (let columnIndex = 0; columnIndex < row.length; columnIndex++) {
+      const cell = row[columnIndex];
+      const sourceLines = Array.isArray(cell) ? cell : [cell];
+      const cellLines = [];
+      for (const sourceLine of sourceLines) {
+        // Only identities wrap; numerical evidence remains intact.
+        const width = columnIndex === 0 ? 48 : Infinity;
+        cellLines.push(...wrapTerminalText(sourceLine, width));
+      }
+      for (const cellLine of cellLines) {
+        widths[columnIndex] = Math.max(widths[columnIndex], cellLine.length);
+      }
+      preparedCells.push(cellLines);
+    }
+    preparedRows.push(preparedCells);
+  }
+
+  const separators = [];
+  for (const width of widths) {
+    separators.push('-'.repeat(width));
+  }
+  const separator = separators.join('-+-');
+  const lines = [formatTerminalRow(headings, widths), separator];
+
+  for (const row of preparedRows) {
+    let rowHeight = 1;
+    for (const cellLines of row) {
+      rowHeight = Math.max(rowHeight, cellLines.length);
+    }
+    for (let lineIndex = 0; lineIndex < rowHeight; lineIndex++) {
+      const cells = [];
+      for (const cellLines of row) {
+        cells.push(cellLines[lineIndex] || '');
+      }
+      lines.push(formatTerminalRow(cells, widths));
+    }
+    lines.push(separator);
+  }
+  if (!rows.length) {
+    lines.push('No identities in the selected scope.');
+  }
+  return lines;
+}
+
+function formatTerminalDetail(label, value) {
+  const lines = wrapTerminalText(value, 74);
+  const formattedLines = [];
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+    const prefix = lineIndex === 0 ? `${label}:` : '';
+    formattedLines.push(`${prefix.padEnd(22)}${lines[lineIndex]}`);
+  }
+  return formattedLines;
+}
+
+function formatTerminalOptions(options) {
+  const lines = [];
+  for (const [optionName, optionValue] of Object.entries(options)) {
+    if (optionValue === null) {
+      continue;
+    }
+    const values = Array.isArray(optionValue) ? optionValue : [optionValue];
+    for (const value of values) {
+      lines.push(...formatTerminalDetail(`--${optionName}`, value));
+    }
+  }
+  return lines;
+}
+
+function formatTerminalMessages(heading, messages) {
+  if (!messages.length) {
+    return [];
+  }
+  const lines = ['', heading];
+  for (const message of messages) {
+    const messageLines = wrapTerminalText(message, 94);
+    for (let lineIndex = 0; lineIndex < messageLines.length; lineIndex++) {
+      const prefix = lineIndex === 0 ? '- ' : '  ';
+      lines.push(prefix + messageLines[lineIndex]);
+    }
+  }
+  return lines;
 }
 
 export function terminal(report, showCode = false) {
   const lines = [
-    `Contribution Calculator ${report.version} — ${report.status}`,
-    `${report.scope.branch.ref} (${report.scope.branch.method})`,
-    `Snapshot: ${report.scope.end}`,
-    `Baseline (excluded): ${report.scope.start || 'none; initial commit included'}`,
-    `UTC period: ${report.scope.periodStart || 'unavailable'} → ` +
-      `${report.scope.periodEnd || 'unavailable'} (${report.weekCount} weeks)`,
-    `Filters: ${JSON.stringify(report.scope.options)}`,
+    `Contribution Calculator ${escapeTerminalText(report.version)}`,
     '',
-    'Identity | Sustained 50% | Activity 35% | Retained 15% | Overall',
+    ...formatTerminalDetail('Status', formatReportStatus(report)),
+    ...formatTerminalDetail('Timing fallback', formatActivityTiming(report.timing)),
+    ...formatTerminalDetail('Branch', report.scope.branch.ref),
+    ...formatTerminalDetail('Selection', report.scope.branch.method),
+    ...formatTerminalDetail('End snapshot', report.scope.end),
+    ...formatTerminalDetail('Baseline (excluded)', report.scope.start || 'none; initial commit included'),
+    ...formatTerminalDetail('Period start (UTC)', report.scope.periodStart || 'unavailable'),
+    ...formatTerminalDetail('Period end (UTC)', report.scope.periodEnd || 'unavailable'),
+    ...formatTerminalDetail('Weeks', report.weekCount),
+    ...formatTerminalDetail('File filters', 'Built-in exclusions'),
+    ...formatTerminalOptions(report.scope.options),
+    '',
+    'Contribution shares',
+    'Weights: Sustained 50% / Activity 35% / Retained 15%',
+    '',
+    ...formatTerminalTable(
+      ['Identity', 'Sustained', 'Activity', 'Retained', 'Overall'],
+      report.identities.map(formatIdentityPercentages),
+    ),
   ];
 
-  for (const summary of report.identities) {
-    lines.push(formatIdentityPercentages(summary));
-    if (showCode) {
-      lines.push(formatIdentityCodeEvidence(summary));
-    }
+  if (showCode) {
+    lines.push(
+      '',
+      'Code and commit evidence',
+      'Added / Deleted: eligible / raw lines. Commits: total / with accepted changes.',
+      'Retained: surviving lines. Repeated: excluded activity units.',
+      '',
+      ...formatTerminalTable(
+        ['Identity', 'Added', 'Deleted', 'Retained', 'Commits', 'Repeated'],
+        report.identities.map(formatIdentityCodeEvidence),
+      ),
+    );
   }
 
   let excludedFileCount = 0;
@@ -2052,14 +2262,13 @@ export function terminal(report, showCode = false) {
       excludedFileCount++;
     }
   }
-  lines.push('', `Excluded file versions: ${excludedFileCount}. Use --json for the evidence ledger.`);
-  for (const reason of report.reasons) {
-    lines.push(`Unavailable: ${reason}`);
-  }
-  for (const warning of report.warnings) {
-    lines.push(`Warning: ${warning}`);
-  }
-  return lines.map(escapeTerminalText).join('\n') + '\n';
+  lines.push(
+    '',
+    `Excluded file versions: ${excludedFileCount}. Use --json for the evidence ledger.`,
+    ...formatTerminalMessages('Score unavailable', report.reasons),
+    ...formatTerminalMessages('Warnings', report.warnings),
+  );
+  return lines.join('\n') + '\n';
 }
 
 function helpText() {

@@ -31,6 +31,54 @@ const row = (report, name) => report.identities.find(r => r.names.includes(name)
 const lines = (count, prefix = 'line') => Array.from({ length: count }, (_, i) => `${prefix} ${i}\n`).join('');
 const sum = (report, key) => report.identities.reduce((a, r) => a + r[key], 0);
 
+function createMergeTimingFixture() {
+  const fixture = repo();
+  fixture.put('base.txt', 'base\n');
+  const baseline = fixture.commit('Alice', date(0));
+  fixture.git(['checkout', '-b', 'feature']);
+  fixture.put('branch.txt', 'branch\n');
+  fixture.commit('Bob', date(1));
+  fixture.git(['checkout', 'main']);
+  fixture.git(['merge', '--no-ff', '--no-commit', 'feature']);
+  fixture.put('resolution.txt', 'new at merge\n');
+  fixture.put('dist/generated.txt', lines(100));
+  const integration = fixture.commit('Merger', date(14));
+  return { fixture, baseline, integration };
+}
+
+function findUnattributed(summary) {
+  return summary.bucket;
+}
+
+function findResolutionEvidence(evidence) {
+  return evidence.path === 'resolution.txt';
+}
+
+function writeCommitWithUnknownAuthorDate(fixture, author, committed) {
+  fixture.git(['add', '-A']);
+  const tree = fixture.git(['write-tree']);
+  const parent = fixture.git(['rev-parse', '--verify', 'HEAD'], { stdio: 'pipe' });
+  const committerTime = Date.parse(committed) / 1000;
+  const object = `tree ${tree}\nparent ${parent}\n` +
+    `author ${author} <${author.toLowerCase()}@example.test> 9999999999999 +0000\n` +
+    `committer Recorder <recorder@example.test> ${committerTime} +0000\n\nUnknown author date\n`;
+  const commitHash = execFileSync('git', ['hash-object', '-w', '-t', 'commit', '--stdin'], {
+    cwd: fixture.cwd,
+    input: object,
+    encoding: 'utf8',
+  }).trim();
+  fixture.git(['update-ref', 'HEAD', commitHash]);
+  return commitHash;
+}
+
+function parseCsvRecord(record) {
+  const values = [];
+  for (const match of record.matchAll(/"((?:[^"]|"")*)"(?:,|$)/g)) {
+    values.push(match[1].replace(/""/g, '"'));
+  }
+  return values;
+}
+
 test('full history, deletion credit and retained ownership; exact repeats cross identities/weeks', () => {
   const r = repo(); r.put('code.txt', lines(100)); r.commit('Alice', date(0));
   r.remove('code.txt'); r.commit('Bob', date(7));
@@ -91,12 +139,180 @@ test('merge deletion belongs to deleting author rather than merger or original o
   assert.equal(report.status, 'scorable');
 });
 
-test('merge-only changes expose missing original timing and withhold overall score', () => {
-  const r = repo(); r.put('a.txt', 'base\n'); r.commit(); r.git(['checkout', '-b', 'feature']); r.put('b.txt', 'branch\n'); r.commit('Bob');
-  r.git(['checkout', 'main']); r.git(['merge', '--no-ff', '--no-commit', 'feature']); r.put('resolution.txt', 'new at merge\n'); r.commit('Merger');
-  const report = r.read(); assert.equal(report.status, 'unscorable');
-  assert.equal(report.identities.find(i => i.bucket).activity, 1); assert.equal(report.identities.find(i => i.bucket).retained, 1);
-  assert.ok(report.evidence.unresolved.length); assert.ok(report.identities.every(i => i.overall === null));
+test('merge-only changes use first integration timing, preserve weights and export coverage', function testMergeTiming() {
+  const { fixture, integration } = createMergeTimingFixture();
+  const report = fixture.read();
+  const unattributed = report.identities.find(findUnattributed);
+  const accepted = report.evidence.accepted.find(findResolutionEvidence);
+  assert.equal(report.status, 'scorable');
+  assert.deepEqual(report.reasons, []);
+  assert.equal(unattributed.activity, 1);
+  assert.equal(unattributed.retained, 1);
+  assert.equal(unattributed.integrationFallbackActivity, 1);
+  assert.deepEqual(unattributed.weekly, [0, 0, 1]);
+  assert.deepEqual(row(report, 'Bob').weekly, [1, 0, 0]);
+  assert.deepEqual(report.teamWeekly, [2, 0, 1]);
+  assert.equal(report.lambda, 2);
+  assert.equal(row(report, 'Merger').activity, 0);
+  assert.equal(row(report, 'Merger').overall, 0);
+  assert.equal(accepted.authorTime, null);
+  assert.equal(accepted.originCommit, null);
+  assert.equal(accepted.integration, integration);
+  assert.equal(accepted.integrationTime, date(14));
+  assert.equal(accepted.activityTime, date(14));
+  assert.equal(accepted.timingSource, 'integration');
+  assert.equal(accepted.week, 2);
+  assert.equal(report.timing.totalActivity, 3);
+  assert.equal(report.timing.originalActivity, 2);
+  assert.equal(report.timing.integrationFallbackActivity, 1);
+  assert.equal(report.timing.unplacedActivity, 0);
+  assert.equal(report.timing.fallbackPercentage, 100 / 3);
+  assert.ok(Math.abs(unattributed.overall - 36.6666666667) < 1e-9);
+  let displayedTotal = 0;
+  for (const summary of report.identities) {
+    const expected = 0.50 * summary.components.sustained +
+      0.35 * summary.components.activity + 0.15 * summary.components.retained;
+    assert.equal(summary.overall, expected);
+    displayedTotal += summary.display.overall;
+  }
+  assert.equal(displayedTotal, 100);
+
+  const result = spawnSync(process.execPath, [script, '--code', '--json'], {
+    cwd: fixture.cwd,
+    encoding: 'utf8',
+    env: { ...process.env, TZ: 'Pacific/Auckland' },
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.ok(result.stdout.includes('scorable with warnings'));
+  assert.ok(result.stdout.includes('1 of 3 eligible activity units (33.33%)'));
+  assert.ok(result.stdout.replace(/\s+/g, ' ').includes('Sustained scores are partly estimated'));
+  const exported = JSON.parse(readFileSync(join(fixture.cwd, 'contribution-evidence.json'), 'utf8'));
+  assert.deepEqual(exported, report);
+  const csv = readFileSync(join(fixture.cwd, 'contribution-summary.csv'), 'utf8');
+  const records = csv.trimEnd().split('\r\n').map(parseCsvRecord);
+  const headings = records[0];
+  for (const record of records.slice(1)) {
+    assert.equal(record.length, headings.length);
+    assert.equal(record[headings.indexOf('Eligible activity total')], '3');
+    assert.equal(record[headings.indexOf('Original-timed activity')], '2');
+    assert.equal(record[headings.indexOf('Integration-date fallback activity')], '1');
+    assert.equal(Number(record[headings.indexOf('Integration-date fallback %')]), 100 / 3);
+    const expectedFallback = record[0] === 'Unattributed' ? '1' : '0';
+    assert.equal(record[headings.indexOf('Identity fallback activity')], expectedFallback);
+  }
+});
+
+test('fallback respects commit baselines and date cutoffs without moving known dates', function testFallbackScope() {
+  const { fixture, baseline, integration } = createMergeTimingFixture();
+  const beforeMerge = fixture.read({ enddate: '2026-01-14' });
+  assert.equal(beforeMerge.timing.integrationFallbackActivity, 0);
+  assert.equal(beforeMerge.timing.fallbackPercentage, 0);
+  const bounded = fixture.read({ start: baseline, end: integration, startdate: '2026-01-10', enddate: '2026-01-15' });
+  assert.equal(bounded.status, 'scorable');
+  assert.equal(bounded.timing.totalActivity, 1);
+  assert.equal(bounded.timing.originalActivity, 0);
+  assert.equal(bounded.timing.fallbackPercentage, 100);
+  assert.equal(bounded.identities.find(findUnattributed).overall, 100);
+  assert.equal(row(bounded, 'Bob'), undefined);
+  fixture.put('later.txt', lines(10));
+  fixture.commit('Carol', date(28));
+  const frozen = fixture.read({ start: baseline, end: integration, startdate: '2026-01-10', enddate: '2026-01-15' });
+  // The branch tip advances, but the selected snapshot and its evidence stay frozen.
+  assert.equal(frozen.scope.end, bounded.scope.end);
+  assert.equal(frozen.status, bounded.status);
+  assert.deepEqual(frozen.timing, bounded.timing);
+  assert.deepEqual(frozen.identities, bounded.identities);
+  assert.deepEqual(frozen.evidence, bounded.evidence);
+});
+
+test('restoring merge-only work does not inflate fallback coverage or transfer retained ownership', function testFallbackRepeats() {
+  const { fixture } = createMergeTimingFixture();
+  fixture.remove('resolution.txt');
+  fixture.commit('Carol', date(21));
+  fixture.git(['checkout', '-b', 'second-feature']);
+  fixture.put('second.txt', 'second\n');
+  fixture.commit('Dave', date(22));
+  fixture.git(['checkout', 'main']);
+  fixture.git(['merge', '--no-ff', '--no-commit', 'second-feature']);
+  fixture.put('resolution.txt', 'new at merge\n');
+  fixture.commit('Another Merger', date(28));
+  const report = fixture.read();
+  const unattributed = report.identities.find(findUnattributed);
+  assert.equal(report.status, 'scorable');
+  assert.equal(report.timing.totalActivity, 5);
+  assert.equal(report.timing.integrationFallbackActivity, 1);
+  assert.equal(report.timing.fallbackPercentage, 20);
+  assert.equal(unattributed.repeated, 1);
+  assert.equal(unattributed.retained, 1);
+  assert.deepEqual(unattributed.weekly, [0, 0, 1, 0, 0]);
+  const restoration = report.evidence.accepted.filter(findResolutionEvidence).at(-1);
+  assert.equal(restoration.repeated, 1);
+  assert.equal(restoration.week, null);
+  assert.equal(restoration.timingSource, null);
+});
+
+test('unknown original dates retain known authorship and use first mainline integration', function testKnownAuthorFallback() {
+  const fixture = repo();
+  fixture.put('base.txt', 'base\n');
+  fixture.commit('Alice', date(0));
+  fixture.git(['checkout', '-b', 'feature']);
+  fixture.put('authored.txt', 'authored\n');
+  const originCommit = writeCommitWithUnknownAuthorDate(fixture, 'Bob', date(1));
+  fixture.git(['checkout', 'main']);
+  fixture.merge('feature', date(14));
+  const report = fixture.read();
+  const contributor = row(report, 'Bob');
+  assert.equal(report.status, 'scorable');
+  assert.equal(contributor.activity, 1);
+  assert.equal(contributor.retained, 1);
+  assert.equal(contributor.integrationFallbackActivity, 1);
+  assert.deepEqual(contributor.weekly, [0, 0, 1]);
+  assert.equal(report.identities.find(findUnattributed), undefined);
+  const accepted = report.evidence.accepted.at(-1);
+  assert.equal(accepted.authorTime, null);
+  assert.equal(accepted.originCommit, originCommit);
+  assert.equal(accepted.activityTime, date(14));
+  assert.equal(accepted.timingSource, 'integration');
+  assert.equal(report.timing.fallbackPercentage, 50);
+});
+
+test('merge-only deletions use fallback and remain unattributed', function testDeletionFallback() {
+  const fixture = repo();
+  fixture.put('base.txt', 'remove\nkeep\n');
+  fixture.commit('Alice', date(0));
+  fixture.git(['checkout', '-b', 'feature']);
+  fixture.put('branch.txt', 'branch\n');
+  fixture.commit('Bob', date(1));
+  fixture.git(['checkout', 'main']);
+  fixture.git(['merge', '--no-ff', '--no-commit', 'feature']);
+  fixture.put('base.txt', 'keep\n');
+  fixture.commit('Merger', date(14));
+  const report = fixture.read();
+  const unattributed = report.identities.find(findUnattributed);
+  assert.equal(report.status, 'scorable');
+  assert.equal(unattributed.deleted, 1);
+  assert.equal(unattributed.added, 0);
+  assert.equal(unattributed.retained, 0);
+  assert.deepEqual(unattributed.weekly, [0, 0, 1]);
+  assert.equal(unattributed.integrationFallbackActivity, 1);
+  assert.equal(row(report, 'Merger').activity, 0);
+  assert.equal(report.timing.totalActivity, 4);
+  assert.equal(report.timing.originalActivity, 3);
+  assert.equal(report.timing.fallbackPercentage, 25);
+});
+
+test('unusable integration dates still withhold scores and report unplaced activity', function testUnusableFallback() {
+  const { fixture } = createMergeTimingFixture();
+  fixture.commit('Merger', date(7));
+  const report = fixture.read();
+  assert.equal(report.status, 'unscorable');
+  assert.equal(report.timing.integrationFallbackActivity, 0);
+  assert.equal(report.timing.unplacedActivity, 1);
+  assert.equal(report.timing.originalActivity, 2);
+  assert.equal(report.timing.totalActivity, 3);
+  for (const summary of report.identities) {
+    assert.equal(summary.overall, null);
+  }
 });
 
 test('whitespace, blank lines and pure renames cannot transfer ownership or create activity', () => {
@@ -205,6 +421,8 @@ test('inactive and partial weeks, direct warning, empty evidence and timestamp a
   const report = r.read(); assert.equal(report.weekCount, 3); assert.equal(report.teamWeekly[1], 0); assert.ok(report.warnings.some(w => w.includes('Direct mainline')));
   r.put('c.txt', 'three\n'); r.commit('Carol', date(30), date(16));
   const anomalous = r.read(); assert.equal(anomalous.status, 'unscorable'); assert.ok(anomalous.warnings.some(w => w.includes('Author time follows')));
+  assert.equal(anomalous.timing.integrationFallbackActivity, 0);
+  assert.equal(anomalous.timing.unplacedActivity, 1);
   const empty = repo(); empty.commit(); const noEvidence = empty.read(); assert.equal(noEvidence.status, 'unscorable'); assert.equal(sum(noEvidence, 'activity'), 0);
   const unborn = repo(); assert.throws(() => unborn.read(), /ambiguous or unavailable/);
 });
@@ -280,6 +498,8 @@ test('known timing with missing identity keeps a genuine Unattributed share', ()
   const report = r.read(); assert.equal(report.status, 'scorable');
   assert.equal(row(report, 'Alice').display.overall, 45); assert.equal(row(report, 'Bob').display.overall, 45);
   assert.equal(report.identities.find(r => r.bucket).display.overall, 10); assert.ok(report.evidence.unresolved.length);
+  assert.equal(report.timing.integrationFallbackActivity, 0);
+  assert.equal(report.timing.originalActivity, report.timing.totalActivity);
 });
 
 test('untrusted diff drivers and attributes cannot execute or alter the line calculation', () => {
