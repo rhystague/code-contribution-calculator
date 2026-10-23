@@ -99,135 +99,170 @@ Local metadata does not establish the current remote state.
 
 ## What counts?
 
-Each accepted, eligible non-blank line added or deleted is one activity unit.
-Replacing 20 lines with 20 new lines gives 40 units. Adding 100 lines then removing
-80 **before integration** gives 20 accepted additions. A merge earns no extra units.
+The calculator measures your share of the team's recorded contributions. Code,
+tests, documentation and configuration count once they reach the analysed branch.
+Code quality, teamwork and marks require separate judgement.
 
-The engine compares consecutive mainline snapshots and traces accepted lines into
-the development history. Additions belong to their originating authors; deletions
-belong to the authors who removed them. Merge-only resolutions without originating
-evidence remain unresolved. Direct mainline changes count, with a workflow warning.
-Whitespace-only changes, pure renames and uniquely traceable same-file block moves
-earn no activity. Authored source, tests, documentation and configuration carry
-equal weight. This is line evidence, not a semantic measure of code quality.
+**One non-blank line added or deleted counts as one activity unit**, subject to
+the exclusions below.
 
-Previously accepted activity and its weekly entry remain after later replacement
-or deletion. The separate retained component counts surviving eligible lines.
-Restoring traceable previously accepted code retains its original owner.
+| Change | Activity credited |
+| --- | ---: |
+| Add 20 lines | 20 units |
+| Delete 20 lines | 20 units |
+| Replace 20 lines with 20 new lines | 40 units |
+| Add 100 lines, then remove 80 before merging | 20 units |
 
-### Repeated changes
+Later edits or deletion do not erase accepted activity credit. The **retained**
+component measures what remains at the end. Your share can still change as the
+team contributes more work.
 
-The first accepted addition and first deletion of a block can earn credit.
-Restoring that exact block at the same location, then deleting it again, adds no
-further activity or weekly credit, even under another identity or in another week.
-For add 100 / delete 100 / restore 100 / delete 100, the report shows 400 raw units,
-200 eligible units and 200 excluded repetitions.
+Credit goes to the authors of the changes, with no bonus for merging. Direct changes
+to the analysed branch count, with a workflow warning. **Commit counts do not affect the score.**
 
-Matching uses the entire whitespace-normalised changed block, its file lineage
-(following Git-detected renames), and the accepted line IDs immediately before
-and after it, skipping blank lines. File boundaries act as anchors. This prevents common text in unrelated
-locations from being treated as repetition. It is conservative: changed context,
-partial restorations and complex rearrangements may not establish an exact match.
-It does not detect every attempt to inflate contributions or establish misconduct.
-Matching removed text that reappears with different surrounding lines is flagged
-for review without automatically excluding it or asserting original ownership.
+### What does not earn credit?
 
-### Exclusions
+- Dependencies, generated files, build output and binary files.
+- The calculator itself and its reports.
+- Blank lines, whitespace-only edits, file renames and traceable moves within a file.
+- Recognised repetitions of changes that have already earned credit.
 
-Default exclusions cover:
+Adding 100 lines, deleting them, then restoring and deleting the same block again
+gives **200 credited units**, not 400. Changing the author or week does not reset
+this rule. Traceable restorations keep the original author's retained credit.
 
-- Dependency/environment directories: `node_modules`, `vendor`, `.venv`, `venv`.
-- Build/cache directories: `dist`, `build`, `coverage`, `__pycache__`, `.next`,
+Large handwritten files remain eligible. Detection is not exhaustive; uncertain
+cases are flagged for review.
+
+<details>
+<summary>File exclusions and repeat detection: technical details</summary>
+
+Default file exclusions include:
+
+- Dependencies and environments: `node_modules`, `vendor`, `.venv`, `venv`.
+- Build output and caches: `dist`, `build`, `coverage`, `__pycache__`, `.next`,
   `.nuxt`, `.cache`, `.pytest_cache`, `.mypy_cache`.
-- Recognised package lockfiles, minified JS/CSS, source maps and generated filenames.
-- Recognised Git history exports: `commit-history.txt`, `git-log.txt`, `git-history.txt`.
-- Recognised generation markers in the first eight lines of a file.
-- Binary/invalid UTF-8 files, unsuitable formats, symlinks and submodule entries.
-- Calculator files and contribution reports, including committed reports and
-  byte-identical copies of the running calculator.
+- Recognised lockfiles, minified JS/CSS, source maps and generated filenames;
+  recognised generation markers in the first eight lines of a file.
+- Git history exports: `commit-history.txt`, `git-log.txt`, `git-history.txt`.
+- Binary files, invalid UTF-8, unsupported formats, symlinks and submodule entries.
+- Calculator files, contribution reports and byte-identical copies of the running
+  calculator, including copies committed to the repository.
 
-File size alone is never an exclusion rule. Exclusions apply to historical changes
-as well as retained files. The JSON ledger records excluded file versions, matched
-reasons and applied inclusion overrides. Automatic rules cannot identify all
-generated or copied material.
+Exclusions apply to past activity and retained lines. JSON records the reasons.
 
-Patterns match the complete repository-relative path: `*` matches within a path
-segment, `**` crosses directories, and `?` matches one non-slash character.
-For example, `**/*.js` matches JavaScript at any depth; `*.js` matches only the root.
-Quote patterns so your shell does not expand them. Braces and character classes
-are literal characters, not extra glob syntax.
+`--exclude` takes priority over `--include`, which restores eligible text caught by
+default exclusions. Inclusion cannot restore binary or calculator/report files,
+bypass scoring rules, or restrict the report to only those paths.
 
-Explicit exclusions win over explicit inclusions. An inclusion restores eligible
-text caught by a default rule; it does not limit the whole report to that pattern.
-It cannot restore binary/unsuitable files or calculator/report files, or bypass
-scope, authorship or repetition rules.
+Patterns match paths from the repository root: `*` stays within one folder level,
+`**` crosses folders, and `?` matches one character other than `/`. For example,
+`**/*.js` matches JavaScript at any depth; `*.js` matches only the root. Quote patterns
+to prevent shell expansion. Braces and character classes are literal.
 
-## Calculation
+Repeat detection checks complete blocks, ignoring whitespace, plus their file history
+and surrounding non-blank lines. Identical text elsewhere is not automatically a
+repeat. Partial restorations and complex moves may remain uncertain; warnings do
+not establish misconduct.
 
-Seven-day intervals begin at the effective period start. Inactive intervals and a
-final partial interval count; an event exactly seven days later starts the next
-interval. Commit counts are descriptive and have no scoring weight.
+</details>
 
-For identity `i` and week `w`:
+## How your score is calculated
 
-```text
-L(i,w) = eligible additions + deletions in that week
-T(w)   = team total in that week
-W      = number of weeks, including inactive/partial weeks
-lambda = 2 × total eligible activity / W
-U(i)   = sum_w L(i,w) / (T(w) + lambda)
-A(i)   = total eligible additions + deletions
-R(i)   = eligible retained lines
+Your overall percentage combines **three shares of the team's contribution**:
 
-Overall(i) = 100 × [0.50 × U(i)/sum(U)
-                 + 0.35 × A(i)/sum(A)
-                 + 0.15 × R(i)/sum(R)]
-```
+| Component | Weight | What it measures |
+| --- | ---: | --- |
+| **Sustained development (S)** | **50%** | Your activity across the project's weeks, considering both its amount and spread over time. |
+| **Development activity (A)** | **35%** | Your share of all credited additions and deletions. |
+| **Retained contribution (R)** | **15%** | Your share of credited lines still present at the end. |
 
-An explicit ten-week fixture with A contributing 1,000 units in week ten, B
-contributing 100 each week, and equal retained lines gives **A 38.16%, B 61.84%**
-(`lambda = 400`). Full precision is retained internally. Displayed component and
-overall shares use deterministic largest-remainder rounding to total 100%.
+Here, **S, A and R are percentage shares**, each between 0 and 100:
 
-Git identities are grouped only by exact email (or exact name when email is absent).
-All recorded names/emails remain in JSON. A Git identity is not a verified student.
-The calculator does not infer team size, reconcile students or calculate marks.
+$$
+\text{Overall contribution (\%)} = 0.50S + 0.35A + 0.15R
+$$
 
-An **Unattributed** bucket keeps work with unresolved authorship in team totals and
-percentages. Known authorship is preserved even if the original development date is
-unknown. Performing a merge does not transfer credit to the merger.
+For example, if your shares are **40% sustained**, **30% activity** and **20% retained**:
+
+$$
+0.50 \times 40 + 0.35 \times 30 + 0.15 \times 20 = \boxed{33.5\%}
+$$
+
+Sustained development considers both consistency and the amount of work. It uses
+seven-day periods from the analysis start date, including inactive weeks and a
+final partial week.
+
+<details>
+<summary>How the sustained component is calculated</summary>
+
+For contributor $i$ in week $w$:
+
+| Symbol | Meaning |
+| --- | --- |
+| $L_{i,w}$ | Their credited additions and deletions that week |
+| $T_w$ | The team's total credited activity that week |
+| $W$ | Number of weeks, including inactive and partial weeks |
+| $\lambda$ | Twice the team's average weekly activity |
+
+$$
+\lambda = \frac{2 \times \text{total credited activity}}{W}
+\qquad
+U_i = \sum_{w=1}^{W} \frac{L_{i,w}}{T_w + \lambda}
+$$
+
+The extra term $\lambda$ reduces the influence of very small changes in quiet weeks.
+Convert $U_i$ into a percentage of the team total:
+
+$$
+S_i = 100 \times \frac{U_i}{\sum_j U_j}
+$$
+
+Activity and retained percentages use their respective team totals in the same way.
+All totals include Unattributed work.
+
+**Example:** over ten weeks, two contributors each record 1,000 activity units and
+have equal retained lines:
+
+| Contributor | When they contribute | Overall share |
+| --- | --- | ---: |
+| A | All 1,000 units in the final week | 38.16% |
+| B | 100 units in each of the ten weeks | 61.84% |
+
+Here $\lambda = 400$; only the sustained shares differ. Scores use unrounded values;
+displayed percentages use two decimal places and total 100%.
+
+</details>
+
+### Reading the results
+
+**Unattributed** is work whose author could not be established. Its share stays in
+the totals and is never redistributed to named contributors.
+
+Entries are grouped by exact email, or exact name when no email is recorded. A
+student using multiple emails may appear more than once. Check identities before
+interpreting individual scores.
 
 ### Missing development dates
 
-When an eligible change has no known original development date, use the committer
-date of the mainline commit that first accepted that change. This applies to both
-additions and deletions, including merge-only resolutions. The change enters that
-week's ledger under its known author or the Unattributed bucket. Original dates that
-are known continue to take precedence; later merges, restorations and repeated
-changes cannot move existing credit into another week.
+If the original date is unknown, the calculator uses when the change first entered
+the analysed branch. This **integration-date fallback** preserves authorship and
+the 50/35/15 weights. It never replaces a known original date.
 
-The **50% sustained / 35% activity / 15% retained** formula, smoothing and denominators
-stay unchanged. Fallback activity remains in all applicable totals. No weight or
-Unattributed share is redistributed to other contributors.
-
-Reports show the number and percentage of eligible activity units using fallback:
+For example:
 
 ```text
 Status:               scorable with warnings
 Timing fallback:      3 of 100 eligible activity units (3.00%)
 ```
 
-The denominator is all eligible accepted additions plus deletions in the selected
-scope, after file and repetition exclusions. It is not commits or retained lines.
-With no eligible activity the percentage is `N/A`. There is no arbitrary coverage
-threshold: the amount is always visible. Integration may occur after development,
-so sustained scores using fallback are partly estimated. JSON preserves the unknown
-original date separately from the integration date used.
+Here, 3% of credited additions and deletions use fallback dates, after exclusions.
+Integration may happen later than development, so the sustained score is partly
+estimated. JSON records the unknown original date and the date used separately.
 
-An overall score remains unavailable when a required component has no eligible
-evidence, no usable reporting period exists, or eligible activity cannot be placed
-even with fallback. Missing required history stops analysis. In an unscorable report,
-available component figures are partial evidence and overall is `N/A`/`null`.
+**N/A** means a required component has no usable evidence, the period is unknown,
+or work cannot be dated even with fallback. Missing required history stops analysis.
+With no eligible activity, the fallback percentage is also `N/A`.
 
 ## Reports
 
