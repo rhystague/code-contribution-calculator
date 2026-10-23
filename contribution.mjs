@@ -1921,6 +1921,17 @@ export function analyse(workingDirectory = process.cwd(), suppliedOptions = {}) 
       'were used for weekly credit. Sustained scores are partly estimated.',
     );
   }
+  let codebaseLines = 0;
+  for (const file of engine.snapshots.get(history.endHash).files.values()) {
+    if (!file.eligible) {
+      continue;
+    }
+    for (const line of engine.readBlob(file.blob).lines) {
+      if (normaliseWhitespace(line)) {
+        codebaseLines++;
+      }
+    }
+  }
   const selectedCommitEvidence = history.selectedCommits.map(engine.readCommit);
 
   return {
@@ -1943,6 +1954,7 @@ export function analyse(workingDirectory = process.cwd(), suppliedOptions = {}) 
       },
     },
     ...score,
+    codebaseLines,
     timing,
     warnings: [...warnings].sort(compareValues),
     identities: evidence.identities,
@@ -2088,11 +2100,12 @@ function formatIdentityPercentages(summary) {
   ];
 }
 
-function formatIdentityCodeEvidence(summary) {
+function formatIdentityCodeEvidence(summary, codebaseLines) {
   return [
     formatIdentityLines(summary),
     `${summary.added} / ${summary.rawAdded}`,
     `${summary.deleted} / ${summary.rawDeleted}`,
+    formatPercentage(codebaseLines ? 100 * summary.retained / codebaseLines : null),
     summary.retained,
     `${summary.commits} / ${summary.acceptedCommits.length}`,
     summary.repeated,
@@ -2246,12 +2259,16 @@ export function terminal(report, showCode = false) {
     lines.push(
       '',
       'Code and commit evidence',
-      'Added / Deleted: eligible / raw lines. Commits: total / with accepted changes.',
+      'Added / Deleted: eligible / raw lines.',
+      'Total: retained lines as a percentage of all eligible non-blank snapshot lines.',
+      'Commits: total / with accepted changes.',
       'Retained: surviving lines. Repeated: excluded activity units.',
       '',
       ...formatTerminalTable(
-        ['Identity', 'Added', 'Deleted', 'Retained', 'Commits', 'Repeated'],
-        report.identities.map(formatIdentityCodeEvidence),
+        ['Identity', 'Added', 'Deleted', 'Total', 'Retained', 'Commits', 'Repeated'],
+        report.identities.map(function formatCodeEvidence(summary) {
+          return formatIdentityCodeEvidence(summary, report.codebaseLines);
+        }),
       ),
     );
   }
